@@ -1,0 +1,40 @@
+{
+  "_note": "Fictional company and data, for demonstration only.",
+  "folders": {
+    "1": {"name": "engineering", "viewers": ["team:engineering#member", "team:leadership#member"]},
+    "2": {"name": "finance", "viewers": ["team:finance#member", "team:leadership#member"]},
+    "3": {"name": "hr", "viewers": ["team:hr#member", "team:leadership#member"]},
+    "4": {"name": "leadership", "viewers": ["team:leadership#member"]},
+    "5": {"name": "handbook", "viewers": ["organization:acme#member"]}
+  },
+  "users": {
+    "alice": {"teams": ["engineering"]},
+    "bob": {"teams": ["finance"]},
+    "carol": {"teams": ["hr"]},
+    "dave": {"teams": ["leadership"]},
+    "erin": {"teams": ["engineering"], "direct_documents": [21]}
+  },
+  "documents": [
+    {"id": 1, "folder": 1, "text": "Postmortem for the 3 March checkout outage: the checkout API was down for 47 minutes. Root cause was database connection pool exhaustion after a config change lowered max connections from 100 to 10. Fix: restored the limit and added an alert at 80% pool usage."},
+    {"id": 2, "folder": 1, "text": "Project Falcon design doc: Falcon is the next-generation warehouse robot controller. It replaces the polling loop with an event bus on NATS and targets 5 ms control latency."},
+    {"id": 3, "folder": 1, "text": "On-call runbook: page the secondary engineer if the primary does not acknowledge within 10 minutes. The on-call rotation changes every Monday at 10:00 IST."},
+    {"id": 4, "folder": 1, "text": "Engineering roadmap for Q4: ship the Falcon beta to two pilot warehouses, move CI to self-hosted runners, and retire the legacy inventory service."},
+    {"id": 21, "folder": 2, "text": "Project Falcon budget: the approved budget is USD 2.4M for FY2027, split into USD 1.1M hardware, USD 0.9M engineering headcount and USD 0.4M pilot operations."},
+    {"id": 22, "folder": 2, "text": "Q3 financial results: revenue grew 18% quarter over quarter to USD 12.6M, and gross margin was 41%."},
+    {"id": 23, "folder": 2, "text": "Vendor payment policy: invoices above USD 50,000 need CFO approval and are paid on net-45 terms."},
+    {"id": 31, "folder": 3, "text": "Salary bands for 2027: Senior Software Engineer is INR 38-52 lakh per year; Staff Engineer is INR 55-75 lakh per year."},
+    {"id": 32, "folder": 3, "text": "Performance review calendar: self reviews are due on 15 November, and calibration meetings run from 20 to 28 November."},
+    {"id": 41, "folder": 4, "text": "Board memo, confidential: Acme is in early talks to acquire a small computer-vision startup, code name Heron. Do not share outside the leadership team."},
+    {"id": 42, "folder": 4, "text": "Hiring plan for 2027: add 14 engineers and 3 product managers, and freeze sales hiring until Q2."},
+    {"id": 51, "folder": 5, "text": "Leave policy: employees get 24 days of paid leave per year. Parental leave is 26 weeks for the primary caregiver and 4 weeks for the secondary caregiver. Apply in the HR portal at least 30 days in advance."},
+    {"id": 52, "folder": 5, "text": "Expense policy: meals during business travel are reimbursed up to INR 2,500 per day. Submit receipts within 30 days."},
+    {"id": 53, "folder": 5, "text": "Security policy: every laptop must use full-disk encryption, and production access requires a hardware security key."}
+  ],
+  "questions": [
+    "What is the approved budget for Project Falcon?",
+    "What caused the checkout outage in March?",
+    "What is the salary band for a senior software engineer?",
+    "How many weeks of parental leave does the primary caregiver get?",
+    "Is the company planning to acquire anyone?"
+  ]
+}

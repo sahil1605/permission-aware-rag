@@ -1,0 +1,39 @@
+# OpenFGA backed by Postgres. Milvus runs embedded (Milvus Lite), so it needs no container.
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: openfga
+      POSTGRES_PASSWORD: openfga
+      POSTGRES_DB: openfga
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U openfga"]
+      interval: 2s
+      retries: 30
+
+  migrate:
+    image: openfga/openfga:v1.21.0
+    command: migrate
+    environment:
+      OPENFGA_DATASTORE_ENGINE: postgres
+      OPENFGA_DATASTORE_URI: postgres://openfga:openfga@postgres:5432/openfga?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  openfga:
+    image: openfga/openfga:v1.21.0
+    command: run
+    environment:
+      OPENFGA_DATASTORE_ENGINE: postgres
+      OPENFGA_DATASTORE_URI: postgres://openfga:openfga@postgres:5432/openfga?sslmode=disable
+      OPENFGA_PLAYGROUND_ENABLED: "false"
+      # Uncomment to reproduce the "no-list-limit" benchmark run.
+      # OPENFGA_LIST_OBJECTS_MAX_RESULTS: "0"
+      # OPENFGA_LIST_OBJECTS_DEADLINE: "30s"
+      # OPENFGA_REQUEST_TIMEOUT: "35s"
+    ports:
+      - "8080:8080"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully

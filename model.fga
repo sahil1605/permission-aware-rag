@@ -1,0 +1,24 @@
+model
+  schema 1.1
+
+type user
+
+type organization
+  relations
+    define member: [user]
+
+type team
+  relations
+    define member: [user]
+
+type folder
+  relations
+    define viewer: [user, team#member, organization#member]
+
+# A document lives in exactly one folder. Anyone who can view the folder can
+# view the document; a document can also be shared directly with a user or team.
+type document
+  relations
+    define parent: [folder]
+    define direct_viewer: [user, team#member]
+    define viewer: direct_viewer or viewer from parent
