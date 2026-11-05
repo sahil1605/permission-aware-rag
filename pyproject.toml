@@ -1,7 +1,7 @@
 [project]
 name = "permission-aware-rag"
-version = "0.1.0"
-description = "RAG retrieval that enforces OpenFGA permissions, with a benchmark of three filtering strategies on Milvus"
+version = "0.2.0"
+description = "RAG retrieval and an A2A agent that enforce OpenFGA permissions, with a benchmark of three filtering strategies on Milvus"
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
@@ -14,6 +14,7 @@ dependencies = [
     "fastembed>=0.4",
     "fastapi>=0.110",
     "uvicorn>=0.29",
+    "a2a-sdk[http-server]>=1.3,<2",
 ]
 
 [project.optional-dependencies]

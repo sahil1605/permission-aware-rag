@@ -53,13 +53,16 @@ class PermissionAwareRetriever(BaseRetriever):
 
 # The fallback answer is deliberately vague: saying "you don't have access" would
 # confirm that a matching document exists.
+NOT_FOUND = "I could not find that in the documents available to you."
+
 PROMPT = ChatPromptTemplate.from_messages(
     [
         (
             "system",
-            "Answer the question using only the context below. Cite sources as [doc N]. "
-            "If the context does not contain the answer, reply exactly: "
-            '"I could not find that in the documents available to you."',
+            (
+                "Answer the question using only the context below. Cite sources as [doc N]. "
+                f'If the context does not contain the answer, reply exactly: "{NOT_FOUND}"'
+            ),
         ),
         ("human", "Context:\n{context}\n\nQuestion: {question}"),
     ]

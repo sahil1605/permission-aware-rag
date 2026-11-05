@@ -1,6 +1,10 @@
 """HTTP API over the demo store. Run demo/run_demo.py first to load data.
 
     uvicorn parag.api:app
+
+Serves POST /search and /ask, and the same answers to other agents over A2A
+(agent card at /.well-known/agent-card.json, JSON-RPC at /a2a).
+Set OLLAMA_MODEL=none to return the permitted passages instead of an LLM answer.
 """
 
 from __future__ import annotations
@@ -11,15 +15,16 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Header
-from langchain_core.output_parsers import StrOutputParser
 from pydantic import BaseModel, Field
 
+from parag.a2a_agent import RagAnswerer, mount_a2a
 from parag.authz import Authorizer
-from parag.rag import PROMPT, Embedder, PermissionAwareRetriever, format_docs
+from parag.rag import Embedder
 from parag.retriever import PermissionAwareSearcher, Strategy
 from parag.store import ChunkStore
 
 STATE = Path(os.getenv("PARAG_STATE", "data/demo_state.json"))
+PUBLIC_URL = os.getenv("PARAG_PUBLIC_URL", "http://127.0.0.1:8000")
 
 
 class SearchRequest(BaseModel):
@@ -35,6 +40,15 @@ class AskRequest(BaseModel):
 components: dict = {}
 
 
+def _llm():
+    model = os.getenv("OLLAMA_MODEL", "llama3.1:8b")
+    if model.lower() == "none":
+        return None
+    from langchain_ollama import ChatOllama
+
+    return ChatOllama(model=model, temperature=0)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     state = json.loads(STATE.read_text())
@@ -42,13 +56,15 @@ async def lifespan(app: FastAPI):
     store = ChunkStore(state["milvus_uri"], collection=state["collection"], dim=embedder.dim)
     store.create()
     authz = Authorizer.connect(state["fga_url"], state["store_id"], state["model_id"])
-    components.update(embedder=embedder, searcher=PermissionAwareSearcher(store, authz))
+    searcher = PermissionAwareSearcher(store, authz)
+    components.update(embedder=embedder, searcher=searcher, answerer=RagAnswerer(searcher, embedder, _llm()))
     yield
-    components["searcher"].close()
+    searcher.close()
     store.close()
 
 
 app = FastAPI(title="permission-aware-rag", lifespan=lifespan)
+mount_a2a(app, answer=lambda user, question: components["answerer"](user, question), base_url=PUBLIC_URL)
 
 
 # Demo only: the caller is identified by an X-User header. A real deployment must
@@ -78,12 +94,5 @@ def search(body: SearchRequest, x_user: str = Header()) -> dict:
 
 @app.post("/ask")
 def ask(body: AskRequest, x_user: str = Header()) -> dict:
-    from langchain_ollama import ChatOllama
-
-    retriever = PermissionAwareRetriever(
-        searcher=components["searcher"], embedder=components["embedder"], user=_subject(x_user), k=3
-    )
-    docs = retriever.invoke(body.question)
-    llm = ChatOllama(model=os.getenv("OLLAMA_MODEL", "llama3.1:8b"), temperature=0)
-    answer = (PROMPT | llm | StrOutputParser()).invoke({"context": format_docs(docs), "question": body.question})
-    return {"answer": answer.strip(), "sources": [d.metadata["doc_id"] for d in docs]}
+    answer = components["answerer"](_subject(x_user), body.question)
+    return {"answer": answer.text, "sources": answer.sources}

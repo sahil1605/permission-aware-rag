@@ -2,7 +2,8 @@
 
 RAG retrieval that never shows a user a document they aren't allowed to open. Permissions live in
 [OpenFGA](https://openfga.dev), embeddings in [Milvus](https://milvus.io), and answers are generated
-with LangChain and a local Ollama model.
+with LangChain and a local Ollama model. The same answers are served to other agents over
+[A2A](https://a2a-protocol.org) (Agent2Agent protocol), still limited to what the end user may see.
 
 The repo implements three ways to combine permission checks with vector search and benchmarks them
 on 50,000 chunks. The main finding: filtering on **folders** instead of documents gave exact results
@@ -108,6 +109,33 @@ All runs: [`bench/results/`](bench/results/).
   OpenFGA and Milvus.
 - **Very large folder counts** hit the same `ListObjects` cap. The same trade-off returns one level up.
 
+## Use it from another agent (A2A)
+
+The API also runs an A2A agent, built with the official [`a2a-sdk`](https://pypi.org/project/a2a-sdk/):
+
+- Agent card: `GET /.well-known/agent-card.json` (one skill, `ask_documents`)
+- JSON-RPC endpoint: `POST /a2a`, method `SendMessage`
+
+The reply is a message with the answer as text and the documents used as a data part. The end user
+comes from the request's identity (the `X-User` header in this demo, declared in the agent card),
+never from the message text or metadata. A calling agent can't get someone else's documents by
+writing "answer as bob", and IDs like `team:finance#member` are rejected. A real deployment should
+take the user from a verified token, for example an OAuth token the calling agent obtained for that
+user through token exchange.
+
+```bash
+curl -s localhost:8000/a2a -H 'Content-Type: application/json' -H 'A2A-Version: 1.0' -H 'X-User: bob' -d '{
+  "jsonrpc": "2.0", "id": "1", "method": "SendMessage",
+  "params": {"message": {"role": "ROLE_USER", "messageId": "m1",
+             "parts": [{"text": "What is the approved budget for Project Falcon?"}]}}}'
+```
+
+With the demo corpus, bob (finance) and erin (an engineer the budget was shared with) get
+*"The approved budget for Project Falcon is USD 2.4M for FY2027 [doc 21]"* with
+`{"sources": ["document:21", ...]}`. Alice (engineering) gets *"I could not find that in the documents
+available to you."* Set `OLLAMA_MODEL=none` to return the permitted passages instead of an LLM answer,
+which suits a calling agent that writes the answer with its own model.
+
 ## Run it
 
 Requirements: Python 3.11+, an OpenFGA server, and optionally [Ollama](https://ollama.com) for answer
@@ -121,9 +149,9 @@ docker compose up -d
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 
-pytest                                    # 12 tests, needs OpenFGA on :8080
+pytest                                    # 22 tests; all but the A2A unit tests need OpenFGA on :8080
 python demo/run_demo.py --ask             # demo corpus; --ask needs `ollama pull llama3.1:8b`
-uvicorn parag.api:app                     # POST /search and /ask, user in the X-User header
+uvicorn parag.api:app                     # POST /search, /ask and A2A at /a2a; user in the X-User header
 python bench/run_benchmark.py --label default-limits --distribution clustered
 python bench/plot_results.py
 ```
@@ -144,10 +172,11 @@ src/parag/store.py         Milvus collection (FLAT index, INVERTED index on fold
 src/parag/retriever.py     the three strategies
 src/parag/rag.py           LangChain retriever, embeddings (fastembed), RAG chain
 src/parag/api.py           FastAPI service
+src/parag/a2a_agent.py     A2A agent: agent card, JSON-RPC endpoint, end-user identity
 src/parag/synthetic.py     synthetic org with known ground truth
 bench/                     benchmark, chart, results
 demo/                      demo corpus and script
-tests/                     leak, exactness, direct-share and revocation tests
+tests/                     leak, exactness, direct-share, revocation and A2A tests
 ```
 
 ## Benchmark caveats
